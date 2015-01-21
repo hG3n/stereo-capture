@@ -17,16 +17,16 @@ std::vector<int> camWidth(2,0);
 std::vector<int> camHeight(2,0);
 
 // baumer system variables
-BGAPI2::SystemList*     systemList(NULL);
-BGAPI2::System*         systemMem(NULL);
+BGAPI2::SystemList     *systemList(NULL);
+BGAPI2::System         *systemMem(NULL);
 BGAPI2::String          systemID("");
 
-BGAPI2::InterfaceList*  interfaceList(NULL);
-BGAPI2::Interface*      interface(NULL);
+BGAPI2::InterfaceList  *interfaceList(NULL);
+BGAPI2::Interface      *interface(NULL);
 BGAPI2::String          interfaceID("");
 
-BGAPI2::DeviceList*     deviceList(NULL);
-BGAPI2::Device*         device(NULL);
+BGAPI2::DeviceList     *deviceList(NULL);
+BGAPI2::Device         *device(NULL);
 BGAPI2::String          deviceID("");
 
 BGAPI2::DataStreamList *datastreamList_R(NULL);
@@ -55,56 +55,40 @@ unsigned int pictureNumberRight = 0;
 
 //callbacks
 void initCameras();
+void initStereoContainers();
 void openStream(IplImage *ref, int cam);
 void saveImage(IplImage* ref, int cam);
 
+
 int main(int argc, char const *argv[]) {
     
-  datastreamListVector.push_back(datastreamList_R);
-  datastreamListVector.push_back(datastreamList_L);
-  
-  datastreamVector.push_back(datastream_R);
-  datastreamVector.push_back(datastream_L);
-  
-  datastreamIDVector.push_back(datastreamID_R);
-  datastreamIDVector.push_back(datastreamID_L);
-  
-  bufferListVector.push_back(bufferList_R);
-  bufferListVector.push_back(bufferList_L);
-
-  bufferVector.push_back(buffer_R);
-  bufferVector.push_back(buffer_L);
-
+  initStereoContainers();
   initCameras();
 
-  IplImage *imageL = cvCreateImage(imagesizeLeft, IPL_DEPTH_8U, 1);
-  IplImage *imageR = cvCreateImage(imagesizeRight, IPL_DEPTH_8U, 1);
+  IplImage *imageLIpl = cvCreateImage(imagesizeLeft, IPL_DEPTH_8U, 1);
+  IplImage *imageRIpl = cvCreateImage(imagesizeRight, IPL_DEPTH_8U, 1);
 
-//  cv::Mat image1Mat(image1, )
   int frame = 0;
-
-  // prepare obj-point vector for calibraiotn
-  for(int i = 0; i < numSquares; ++i) {
-    obj.push_back(cv::Point3f(i/hCorners, i%hCorners, 0.0f));
-  }
  
-  cvNamedWindow("Left", CV_WINDOW_AUTOSIZE);
-  cvNamedWindow("Right", CV_WINDOW_AUTOSIZE);
+  cvNamedWindow("Left", CV_WINDOW_NORMAL);
+  cvNamedWindow("Right", CV_WINDOW_NORMAL);
 
   while(true) {
 
     ++frame;
-
     if(key == 27)
       break;
 
-    openStream(imageR, 1);
-    openStream(imageL, 0);
+    openStream(imageRIpl, 1);
+    openStream(imageLIpl, 0);
+
+    cv::Mat imageR(imageRIpl, true);
+    cv::Mat imageL(imageLIpl, true);
 
     key = cvWaitKey(10);
 
-    cvShowImage("Left", imageL);
-    cvShowImage("Right", imageR);
+    cv::imshow("Left", imageR);
+    cv::imshow("Right", imageL);
   };
 
   return 0;
@@ -156,16 +140,14 @@ void initCameras() {
       std::cout << "Device Name: " << deviceIter->second->GetDisplayName() << std::endl;
       device->Open();
 
+      // --- CAM RESOLUTION --- //
+      camWidth[cam] = device->GetRemoteNode("Width")->GetInt();
+      camHeight[cam] = device->GetRemoteNode("Height")->GetInt();
+      std::cout << "  Resolution: " << camWidth[cam] << " x " << camHeight[cam] << std::endl;
+      
       // --- SETUP STUFF --- //
       device->GetRemoteNode("PixelFormat")->SetString("Mono8");
-      // device->GetRemoteNode("BinningHorizontal")->SetInt(2);
-      // device->GetRemoteNode("BinningVertical")->SetInt(2);
       //device->GetRemoteNode("HqMode")->SetString("On");
-
-      // --- CAM RESOLUTION --- //
-      camWidth = device->GetRemoteNode("Width")->GetInt();
-      camHeight = device->GetRemoteNode("Height")->GetInt();
-      std::cout << "  Resolution: " << camWidth << " x " << camHeight << std::endl;      
 
       // --- DATASTREAMS --- //
       datastreamListVector[cam] = device->GetDataStreams();
@@ -205,6 +187,23 @@ void initCameras() {
   } catch(BGAPI2::Exceptions::IException& ex) {
     std::cerr << ex.GetErrorDescription() << std::endl;
   }
+}
+
+void initStereoContainers() {
+  datastreamListVector.push_back(datastreamList_R);
+  datastreamListVector.push_back(datastreamList_L);
+  
+  datastreamVector.push_back(datastream_R);
+  datastreamVector.push_back(datastream_L);
+  
+  datastreamIDVector.push_back(datastreamID_R);
+  datastreamIDVector.push_back(datastreamID_L);
+  
+  bufferListVector.push_back(bufferList_R);
+  bufferListVector.push_back(bufferList_L);
+
+  bufferVector.push_back(buffer_R);
+  bufferVector.push_back(buffer_L);
 }
 
 void openStream(IplImage *ref, int cam) {

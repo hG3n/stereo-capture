@@ -26,8 +26,8 @@ LDFLAGS = -lbgapi2_ext \
 CFLAGS  = -fPIC -Wall -fdiagnostics-color=auto -O3 $(SDL_CFLAGS) -DLINUX -D_GNULINUX
 CXXFLAGS = $(CFLAGS) $(INCLUDES) -std=c++11
 
-SRC = capture_stream.cpp
-OBJ = capture_stream.o
+SRC = calib.cpp
+OBJ = calib.o
 
 all: capturestream
 
