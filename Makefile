@@ -22,7 +22,7 @@ LDFLAGS = -lbgapi2_ext \
           -levisionlib \
           -limage_tools \
           -lMathParser \
-          
+
 CFLAGS  = -fPIC -Wall -fdiagnostics-color=auto -O3 $(SDL_CFLAGS) -DLINUX -D_GNULINUX
 CXXFLAGS = $(CFLAGS) $(INCLUDES) -std=c++11
 
@@ -36,3 +36,7 @@ capturestream: $(OBJ)
 
 clean:
 	rm -rf $(PROG) $(OBJ)
+
+clean-images:
+	rm out/left/* && rm out/right/*
+
