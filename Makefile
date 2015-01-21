@@ -36,3 +36,7 @@ capturestream: $(OBJ)
 
 clean:
 	rm -rf $(PROG) $(OBJ)
+
+clean-images:
+	rm out/left/* && rm out/right/*
+
