@@ -12,54 +12,79 @@ char key;
 int camWidth, camHeight;
 
 CvSize imagesize(cvSize(1384, 1036));
-IplImage * frame1(cvCreateImage(imagesize, IPL_DEPTH_8U, 1));
+IplImage* frame1(cvCreateImage(imagesize, IPL_DEPTH_8U, 1));
 
 // baumer system variables
-BGAPI2::SystemList     *systemList(NULL);
-BGAPI2::System         *systemMem(NULL);
+BGAPI2::SystemList*     systemList(NULL);
+BGAPI2::System*         systemMem(NULL);
 BGAPI2::String          systemID("");
 
-BGAPI2::InterfaceList  *interfaceList(NULL);
-BGAPI2::Interface      *interface(NULL);
+BGAPI2::InterfaceList*  interfaceList(NULL);
+BGAPI2::Interface*      interface(NULL);
 BGAPI2::String          interfaceID("");
 
-BGAPI2::DeviceList     *deviceList(NULL);
-BGAPI2::Device         *device(NULL);
+BGAPI2::DeviceList*     deviceList(NULL);
+BGAPI2::Device*         device(NULL);
 BGAPI2::String          deviceID("");
 
-BGAPI2::DataStreamList *datastreamList(NULL);
-BGAPI2::DataStream     *datastream(NULL);
+BGAPI2::DataStreamList* datastreamList(NULL);
+BGAPI2::DataStream*     datastream(NULL);
 BGAPI2::String          datastreamID("");
 
-BGAPI2::BufferList     *bufferList(NULL);
-BGAPI2::Buffer         *buffer(NULL);
+BGAPI2::BufferList*     bufferList(NULL);
+BGAPI2::Buffer*         buffer(NULL);
+
+// calibration variables
+int hCorners = 9;
+int vCorners = 6;
+
+int numSquares = hCorners * vCorners;
+CvSize boardsize(cvSize(hCorners, vCorners));
+
+std::vector<cv::Point3f> obj;
+std::vector<CvPoint2D32f> corners;
 
 //callbacks
 void initCameras();
-void openStream(IplImage *ref);
+void openStream(IplImage *ref, int frame);
 
 int main(int argc, char const *argv[]) {
     
   initCameras();
 
-  IplImage *image1 = cvCreateImage(imagesize, IPL_DEPTH_8U, 1);
-  IplImage *image2 = cvCreateImage(imagesize, IPL_DEPTH_8U, 1);
+  IplImage* image1 = cvCreateImage(imagesize, IPL_DEPTH_8U, 1);
+//  IplImage* image1Gray = cvCreateImage(imagesize, IPL_DEPTH_8U, 1);
 
+//  cv::Mat image1Mat(image1, )
   int frame = 0;
+
+  // prepare obj-point vector for calibraiotn
+  for(int i = 0; i < numSquares; ++i) {
+    obj.push_back(cv::Point3f(i/hCorners, i%hCorners, 0.0f));
+  }
  
   //cvNamedWindow("CaptureStream", CV_WINDOW_AUTOSIZE);
-
 
   while(true) {
 
     ++frame;
-    std::cout << frame << std::endl;
+    if (key == 27)
+      break;
 
     openStream(image1, frame);
-    key = cvWaitKey(27);
-    openStream(image2, frame);
+    key = cvWaitKey(10);
 
-    cvShowImage("CaptureStream", image1);
+    cv::Mat image1Mat(image1, true);
+
+    bool found = cv::findChessboardCorners(image1Mat, boardsize, corners, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FILTER_QUADS);
+#if 0
+    if(found) {
+      cv::drawChessboardCorners(image1Mat, boardsize, corners, found);
+    }
+#endif
+    //cvFindChessboardCorners(image1, boardsize, corners);
+    cv::imshow("CaptureStream", image1Mat);
+    //cvShowImage("CaptureStream", image1);
   };
 
 
@@ -112,14 +137,16 @@ void initCameras() {
       std::cout << "Device Name: " << deviceIter->second->GetDisplayName() << std::endl;
       device->Open();
 
+      // --- SETUP STUFF --- //
+      device->GetRemoteNode("PixelFormat")->SetString("Mono8");
+      // device->GetRemoteNode("BinningHorizontal")->SetInt(2);
+      // device->GetRemoteNode("BinningVertical")->SetInt(2);
+      //device->GetRemoteNode("HqMode")->SetString("On");
+
       // --- CAM RESOLUTION --- //
       camWidth = device->GetRemoteNode("Width")->GetInt();
       camHeight = device->GetRemoteNode("Height")->GetInt();
-      std::cout << "  Resolution: " << camWidth << " x " << camHeight << std::endl;
-      
-      // --- SETUP STUFF --- //
-      device->GetRemoteNode("PixelFormat")->SetString("Mono8");
-      //device->GetRemoteNode("HqMode")->SetString("On");
+      std::cout << "  Resolution: " << camWidth << " x " << camHeight << std::endl;      
 
       // --- DATASTREAMS --- //
       datastreamList = device->GetDataStreams();
@@ -152,6 +179,8 @@ void initCameras() {
       device->GetRemoteNode("AcquisitionStart")->Execute();
 
       std::cout << "" << std::endl;
+
+      break;
     }
 
   } catch(BGAPI2::Exceptions::IException& ex) {
@@ -177,10 +206,10 @@ void openStream(IplImage *ref, int frame) {
     cvCopy(tempframe, ref, NULL);
     cvReleaseImageHeader(&tempframe);
 
-    cvFlip(ref, ref, -1);
+    cvFlip(ref, ref, 1);
     // pressing spacebar saves the current image
     if (char(key) == 32) {
-      cvSaveImage(std::to_string(frame) +".png", ref);
+      cvSaveImage("frame.png", ref);
     }
   } catch (BGAPI2::Exceptions::IException& ex) {
     std::cerr << ex.GetErrorDescription() << std::endl;
