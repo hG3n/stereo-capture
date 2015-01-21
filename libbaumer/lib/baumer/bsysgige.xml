@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ConfigFile VendorName="Baumer" MajorVersion="2" MinorVersion="2" SubMinorVersion="0">
+  <FileVersion>2.2.0.0</FileVersion>
+  <Resend>
+    <Version>1</Version>
+    <Version1>
+      <!--Set the maximum number of resend requests per image (default 500)-->
+      <MaxResendsPerImage>500</MaxResendsPerImage>
+      <!--Set the maximum number of resend requests per packet (default 3)-->
+      <MaxResendsPerPacket>3</MaxResendsPerPacket>
+      <!--Set the number of packets to wait befor sending the first resend requests (default 0)-->
+      <FirstResendWaitPackets>0</FirstResendWaitPackets>
+      <!--Set the number of packets to wait befor sending the first resend requests if the camera sends the data over two physical links (default 20)-->
+      <FirstResendWaitPacketsDualLink>20</FirstResendWaitPacketsDualLink>
+      <!--Set the time in ms to wait befor sending the first resend requests (default 150)-->
+      <FirstResendWaitTime>150</FirstResendWaitTime>
+      <!--Set the number of packets to wait befor sending the next resend requests (default 20)-->
+      <NextResendWaitPackets>20</NextResendWaitPackets>
+      <!--Set the number of packets to wait befor sending the next resend requests if the camera sends the data over two physical links (default 20)-->
+      <NextResendWaitPacketsDualLink>20</NextResendWaitPacketsDualLink>
+      <!--Set the time in ms to wait befor sending the next resend requests (default 100)-->
+      <NextResendWaitTime>100</NextResendWaitTime>
+    </Version1>
+  </Resend>
+  <GVCP>
+    <!--Set Timeout (in ms) and number of retrys for control channel
+        0 = the pending timeout register of camera is used for control channel timeout (default)
+        1..60000 = timeout value
+    -->
+    <ControlChannelTimeout>0</ControlChannelTimeout>
+    <ControlChannelRetrys>3</ControlChannelRetrys>
+    <!--Set Timeout(in ms) and number of retrys for asynchron messages from the camera (if supported) -->
+    <MessageChannelTimeout>100</MessageChannelTimeout>
+    <MessageChannelRetrys>2</MessageChannelRetrys>
+  </GVCP>
+  <GEV>
+  <!-- max. packet size for GigE transmission --> 
+  <GevSCPSMaxPacketSize>0</GevSCPSMaxPacketSize>
+  </GEV>
+  <SYSTEM>
+      <IncreaseThreadPriority>0</IncreaseThreadPriority>
+      <IncreasePriorityClass>0</IncreasePriorityClass>
+  </SYSTEM>
+
+</ConfigFile>
+<!-- EOF -->
+
