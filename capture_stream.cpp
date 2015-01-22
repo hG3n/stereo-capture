@@ -11,8 +11,8 @@
 char key;
 
 // camera image sizes
-CvSize imagesizeLeft(cvSize(1392, 1040));
-CvSize imagesizeRight(cvSize(1392, 1040));
+CvSize imagesizeLeft(cvSize(1392/2, 1040/2));
+CvSize imagesizeRight(cvSize(1392/2, 1040/2));
 std::vector<int> camWidth(2,0);
 std::vector<int> camHeight(2,0);
 
@@ -67,17 +67,21 @@ void initStereoContainers();
 void initParameters();
 void openStream(IplImage *ref, int cam);
 void saveImage(IplImage* ref, int cam);
-// void loadCoefficiants(std::string name, char cam);
+void loadCoefficiants(std::string name, int cam);
 
 int main(int argc, char const *argv[]) {
     
   initStereoContainers();
   initParameters();
   initCameras();
-  // loadCoefficiants();
+  loadCoefficiants("left.yml", 0);
+  loadCoefficiants("right.yml", 1);
 
   IplImage *imageLIpl = cvCreateImage(imagesizeLeft, IPL_DEPTH_8U, 1);
   IplImage *imageRIpl = cvCreateImage(imagesizeRight, IPL_DEPTH_8U, 1);
+
+  cv::Mat undistortedLeft;
+  cv::Mat undistortedRight;
 
   int frame = 0;
  
@@ -87,9 +91,9 @@ int main(int argc, char const *argv[]) {
   while(true) {
 
     ++frame;
-    std::cout << frame << std::endl;
     if(key == 27)
       break;
+    key = cvWaitKey(1);
 
     openStream(imageLIpl, 0);
     openStream(imageRIpl, 1);
@@ -97,10 +101,11 @@ int main(int argc, char const *argv[]) {
     cv::Mat imageL(imageLIpl, true);
     cv::Mat imageR(imageRIpl, true);
 
-    key = cvWaitKey(10);
+    cv::undistort(imageL, undistortedLeft, cameraMatrices[0], distCoeffs[0]);
+    cv::undistort(imageR, undistortedRight, cameraMatrices[1], distCoeffs[1]);
 
-    cv::imshow("Left", imageL);
-    cv::imshow("Right", imageR);
+    cv::imshow("Left", undistortedLeft);
+    cv::imshow("Right", undistortedRight);
 
     imageL.release();
     imageR.release();
@@ -287,18 +292,9 @@ void saveImage(IplImage* ref, int cam) {
   }
 }
 
-#if 0
-void loadCoefficiants(std::string name, char cam) {
-  // cv::FileStorage fs(name, cv::FileStorage::READ);
-
-  // fs["cameraMatrix"] >> intrinsicRight
-
-  if (cam == "right")
-    std::cout << name << "  right  "<< std::endl;
-  else if (cam == "left")
-    std::cout << name << "  left  " << std::endl;
-  else
-    std::cout << "foo" << std::endl;
-
+void loadCoefficiants(std::string name, int cam) {
+  cv::FileStorage fs(name, cv::FileStorage::READ);
+  fs["cameraMatrix"] >> cameraMatrices[cam];
+  fs["distCoeff"] >> distCoeffs[cam];
+  fs.release();
 } 
-#endif
