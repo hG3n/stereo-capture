@@ -306,14 +306,14 @@ void saveImage(IplImage* ref, int cam) {
 }
 
 void loadIntrinsic(std::string name, int cam) {
-  cv::FileStorage fs(name, cv::FileStorage::READ);
+  cv::FileStorage fs("./parameters/" + name, cv::FileStorage::READ);
   fs["cameraMatrix"] >> cameraMatrices[cam];
   fs["distCoeff"] >> distCoeffs[cam];
   fs.release();
 } 
 
 void loadExtrinsic(std::string name) {
-  cv::FileStorage fs(name, cv::FileStorage::READ);
+  cv::FileStorage fs("./parameters/" + name, cv::FileStorage::READ);
   fs["R"] >> R;
   fs["T"] >> T;
   fs["E"] >> E;
