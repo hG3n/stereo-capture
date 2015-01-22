@@ -61,21 +61,30 @@ std::vector<cv::Mat> cameraMatrices;
 cv::Mat distCoeffLeft, distCoeffsRight;
 std::vector<cv::Mat> distCoeffs;
 
+cv::Mat R,T,E,F;
+
 // callbacks
 void initCameras();
 void initStereoContainers();
 void initParameters();
 void openStream(IplImage *ref, int cam);
 void saveImage(IplImage* ref, int cam);
-void loadCoefficiants(std::string name, int cam);
+void loadIntrinsic(std::string name, int cam);
+void loadExtrinsic(std::string name);
 
 int main(int argc, char const *argv[]) {
     
   initStereoContainers();
   initParameters();
   initCameras();
-  loadCoefficiants("left.yml", 0);
-  loadCoefficiants("right.yml", 1);
+  loadIntrinsic("left.yml", 0);
+  loadIntrinsic("right.yml", 1);
+  loadExtrinsic("extrinsic.yml");
+
+  std::cout << R << std::endl;
+  std::cout << T << std::endl;
+  std::cout << E << std::endl;
+  std::cout << F << std::endl;
 
   IplImage *imageLIpl = cvCreateImage(imagesizeLeft, IPL_DEPTH_8U, 1);
   IplImage *imageRIpl = cvCreateImage(imagesizeRight, IPL_DEPTH_8U, 1);
@@ -86,10 +95,7 @@ int main(int argc, char const *argv[]) {
   int frame = 0;
  
   cvNamedWindow("Left", CV_WINDOW_NORMAL);
-  cvNamedWindow("LeftUndistorted", CV_WINDOW_NORMAL);
-
   cvNamedWindow("Right", CV_WINDOW_NORMAL);
-  cvNamedWindow("RightUndistorted", CV_WINDOW_NORMAL);
 
   while(true) {
 
@@ -107,11 +113,8 @@ int main(int argc, char const *argv[]) {
     cv::undistort(imageL, undistortedLeft, cameraMatrices[0], distCoeffs[0]);
     cv::undistort(imageR, undistortedRight, cameraMatrices[1], distCoeffs[1]);
 
-    cv::imshow("LeftUndistorted", undistortedLeft);
-    cv::imshow("RightUndistorted", undistortedRight);
-
-    cv::imshow("Left", imageL);
-    cv::imshow("Right", imageR);
+    cv::imshow("Left", undistortedLeft);
+    cv::imshow("Right", undistortedRight);
 
     imageL.release();
     imageR.release();
@@ -168,9 +171,11 @@ void initCameras() {
 
       // --- SETUP STUFF --- //
       device->GetRemoteNode("PixelFormat")->SetString("Mono8");
-      //device->GetRemoteNode("HqMode")->SetString("On");
+      device->GetRemoteNode("HqMode")->SetString("On");
       device->GetRemoteNode("BinningHorizontal")->SetInt(2);
       device->GetRemoteNode("BinningVertical")->SetInt(2);
+      device->GetRemoteNode("ExposureTime")->SetDouble(48000);
+      device->GetRemoteNode("Gain")->SetDouble(2.0);
 
       // --- CAM RESOLUTION --- //
       camWidth[cam] = device->GetRemoteNode("Width")->GetInt();
@@ -300,9 +305,18 @@ void saveImage(IplImage* ref, int cam) {
   }
 }
 
-void loadCoefficiants(std::string name, int cam) {
+void loadIntrinsic(std::string name, int cam) {
   cv::FileStorage fs(name, cv::FileStorage::READ);
   fs["cameraMatrix"] >> cameraMatrices[cam];
   fs["distCoeff"] >> distCoeffs[cam];
   fs.release();
 } 
+
+void loadExtrinsic(std::string name) {
+  cv::FileStorage fs(name, cv::FileStorage::READ);
+  fs["R"] >> R;
+  fs["T"] >> T;
+  fs["E"] >> E;
+  fs["F"] >> F;
+  fs.release();
+}
