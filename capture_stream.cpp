@@ -29,41 +29,52 @@ BGAPI2::DeviceList     *deviceList(NULL);
 BGAPI2::Device         *device(NULL);
 BGAPI2::String          deviceID("");
 
-BGAPI2::DataStreamList *datastreamList_R(NULL);
 BGAPI2::DataStreamList *datastreamList_L(NULL);
+BGAPI2::DataStreamList *datastreamList_R(NULL);
 std::vector<BGAPI2::DataStreamList*> datastreamListVector;
 
-BGAPI2::DataStream     *datastream_R(NULL);
 BGAPI2::DataStream     *datastream_L(NULL);
+BGAPI2::DataStream     *datastream_R(NULL);
 std::vector<BGAPI2::DataStream*> datastreamVector;
 
-BGAPI2::String          datastreamID_R("");
 BGAPI2::String          datastreamID_L("");
+BGAPI2::String          datastreamID_R("");
 std::vector<BGAPI2::String> datastreamIDVector;
 
-BGAPI2::BufferList     *bufferList_R(NULL);
 BGAPI2::BufferList     *bufferList_L(NULL);
+BGAPI2::BufferList     *bufferList_R(NULL);
 std::vector<BGAPI2::BufferList*> bufferListVector;
 
-BGAPI2::Buffer         *buffer_R(NULL);
 BGAPI2::Buffer         *buffer_L(NULL);
+BGAPI2::Buffer         *buffer_R(NULL);
 std::vector<BGAPI2::Buffer*> bufferVector;
 
-//
+// picture Numbers
 unsigned int pictureNumberLeft = 0;
 unsigned int pictureNumberRight = 0;
 
-//callbacks
+// camera parameters
+cv::Mat intrinsicLeft = cv::Mat(3, 3, CV_32FC1);
+cv::Mat intrinsicRight = cv::Mat(3, 3, CV_32FC1);
+std::vector<cv::Mat> cameraMatrices;
+
+cv::Mat distCoeffLeft, distCoeffsRight;
+std::vector<cv::Mat> distCoeffs;
+
+// callbacks
 void initCameras();
 void initStereoContainers();
+void initParameters();
 void openStream(IplImage *ref, int cam);
 void saveImage(IplImage* ref, int cam);
-
+// void loadCoefficiants(std::string name, char cam);
 
 int main(int argc, char const *argv[]) {
     
   initStereoContainers();
+  initParameters();
   initCameras();
+  // loadCoefficiants();
 
   IplImage *imageLIpl = cvCreateImage(imagesizeLeft, IPL_DEPTH_8U, 1);
   IplImage *imageRIpl = cvCreateImage(imagesizeRight, IPL_DEPTH_8U, 1);
@@ -76,19 +87,23 @@ int main(int argc, char const *argv[]) {
   while(true) {
 
     ++frame;
+    std::cout << frame << std::endl;
     if(key == 27)
       break;
 
-    openStream(imageRIpl, 1);
     openStream(imageLIpl, 0);
+    openStream(imageRIpl, 1);
 
-    cv::Mat imageR(imageRIpl, true);
     cv::Mat imageL(imageLIpl, true);
+    cv::Mat imageR(imageRIpl, true);
 
     key = cvWaitKey(10);
 
-    cv::imshow("Left", imageR);
-    cv::imshow("Right", imageL);
+    cv::imshow("Left", imageL);
+    cv::imshow("Right", imageR);
+
+    imageL.release();
+    imageR.release();
   };
 
   return 0;
@@ -190,20 +205,36 @@ void initCameras() {
 }
 
 void initStereoContainers() {
-  datastreamListVector.push_back(datastreamList_R);
   datastreamListVector.push_back(datastreamList_L);
+  datastreamListVector.push_back(datastreamList_R);
   
-  datastreamVector.push_back(datastream_R);
   datastreamVector.push_back(datastream_L);
+  datastreamVector.push_back(datastream_R);
   
-  datastreamIDVector.push_back(datastreamID_R);
   datastreamIDVector.push_back(datastreamID_L);
+  datastreamIDVector.push_back(datastreamID_R);
   
-  bufferListVector.push_back(bufferList_R);
   bufferListVector.push_back(bufferList_L);
+  bufferListVector.push_back(bufferList_R);
 
-  bufferVector.push_back(buffer_R);
   bufferVector.push_back(buffer_L);
+  bufferVector.push_back(buffer_R);
+}
+
+void initParameters() {
+  // camera matrices
+  cameraMatrices.push_back(intrinsicLeft);
+  cameraMatrices.push_back(intrinsicRight);
+
+  cameraMatrices[0].ptr<float>(0)[0] = 1;
+  cameraMatrices[0].ptr<float>(1)[1] = 1;
+
+  cameraMatrices[1].ptr<float>(0)[0] = 1;
+  cameraMatrices[1].ptr<float>(1)[1] = 1;
+
+  // distortion coefficiants
+  distCoeffs.push_back(distCoeffLeft);
+  distCoeffs.push_back(distCoeffsRight);
 }
 
 void openStream(IplImage *ref, int cam) {
@@ -255,3 +286,19 @@ void saveImage(IplImage* ref, int cam) {
 
   }
 }
+
+#if 0
+void loadCoefficiants(std::string name, char cam) {
+  // cv::FileStorage fs(name, cv::FileStorage::READ);
+
+  // fs["cameraMatrix"] >> intrinsicRight
+
+  if (cam == "right")
+    std::cout << name << "  right  "<< std::endl;
+  else if (cam == "left")
+    std::cout << name << "  left  " << std::endl;
+  else
+    std::cout << "foo" << std::endl;
+
+} 
+#endif
