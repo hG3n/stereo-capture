@@ -86,7 +86,10 @@ int main(int argc, char const *argv[]) {
   int frame = 0;
  
   cvNamedWindow("Left", CV_WINDOW_NORMAL);
+  cvNamedWindow("LeftUndistorted", CV_WINDOW_NORMAL);
+
   cvNamedWindow("Right", CV_WINDOW_NORMAL);
+  cvNamedWindow("RightUndistorted", CV_WINDOW_NORMAL);
 
   while(true) {
 
@@ -104,8 +107,11 @@ int main(int argc, char const *argv[]) {
     cv::undistort(imageL, undistortedLeft, cameraMatrices[0], distCoeffs[0]);
     cv::undistort(imageR, undistortedRight, cameraMatrices[1], distCoeffs[1]);
 
-    cv::imshow("Left", undistortedLeft);
-    cv::imshow("Right", undistortedRight);
+    cv::imshow("LeftUndistorted", undistortedLeft);
+    cv::imshow("RightUndistorted", undistortedRight);
+
+    cv::imshow("Left", imageL);
+    cv::imshow("Right", imageR);
 
     imageL.release();
     imageR.release();
@@ -160,19 +166,21 @@ void initCameras() {
       std::cout << "Device Name: " << deviceIter->second->GetDisplayName() << std::endl;
       device->Open();
 
+      // --- SETUP STUFF --- //
+      device->GetRemoteNode("PixelFormat")->SetString("Mono8");
+      //device->GetRemoteNode("HqMode")->SetString("On");
+      device->GetRemoteNode("BinningHorizontal")->SetInt(2);
+      device->GetRemoteNode("BinningVertical")->SetInt(2);
+
       // --- CAM RESOLUTION --- //
       camWidth[cam] = device->GetRemoteNode("Width")->GetInt();
       camHeight[cam] = device->GetRemoteNode("Height")->GetInt();
       std::cout << "  Resolution: " << camWidth[cam] << " x " << camHeight[cam] << std::endl;
-      
-      // --- SETUP STUFF --- //
-      device->GetRemoteNode("PixelFormat")->SetString("Mono8");
-      //device->GetRemoteNode("HqMode")->SetString("On");
 
       // --- DATASTREAMS --- //
       datastreamListVector[cam] = device->GetDataStreams();
       datastreamListVector[cam]->Refresh();
-      std::cout << "  DataStreams " << datastreamListVector[cam]->size() << std::endl;
+      std::cout << "  DataStreams: " << datastreamListVector[cam]->size() << std::endl;
 
       datastreamListVector[cam]->begin()->second->Open();
       datastreamIDVector[cam] = datastreamListVector[cam]->begin()->first;
