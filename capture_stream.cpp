@@ -2,9 +2,11 @@
 #include <vector>
 #include <string>
 #include <omp.h>
+// #include <mpi.h>
 
 #include "opencv2/opencv.hpp"
 #include "opencv2/highgui/highgui.hpp"
+#include "opencv2/calib3d/calib3d.hpp"
 
 #include "bgapi2_genicam.hpp"
 
@@ -61,7 +63,15 @@ std::vector<cv::Mat> cameraMatrices;
 cv::Mat distCoeffLeft, distCoeffsRight;
 std::vector<cv::Mat> distCoeffs;
 
+// extrinsic parameters
 cv::Mat R,T,E,F;
+
+// settings
+double exposure, gain;
+int rectifyalpha;
+int enableDisparity = 0;
+int minDisparity, numDisparities, SADWindowSize;
+int disparitySmoothness1, disparitySmoothness2;
 
 // callbacks
 void initCameras();
@@ -69,6 +79,7 @@ void initStereoContainers();
 void initParameters();
 void openStream(IplImage *ref, int cam);
 void saveImage(IplImage* ref, int cam);
+void loadSettings(std::string name);
 void loadIntrinsic(std::string name, int cam);
 void loadExtrinsic(std::string name);
 
@@ -76,26 +87,42 @@ int main(int argc, char const *argv[]) {
     
   initStereoContainers();
   initParameters();
+  loadSettings("settings.yml");
   initCameras();
   loadIntrinsic("left.yml", 0);
   loadIntrinsic("right.yml", 1);
-  loadExtrinsic("extrinsic.yml");
+  loadExtrinsic("extrinsic_metric.yml");
 
+#if 0
   std::cout << R << std::endl;
   std::cout << T << std::endl;
   std::cout << E << std::endl;
   std::cout << F << std::endl;
+#endif
 
   IplImage *imageLIpl = cvCreateImage(imagesizeLeft, IPL_DEPTH_8U, 1);
   IplImage *imageRIpl = cvCreateImage(imagesizeRight, IPL_DEPTH_8U, 1);
 
-  cv::Mat undistortedLeft;
-  cv::Mat undistortedRight;
+  cv::Mat undistortedLeft, undistortedRight, 
+          map1Left, map1Right,
+          map2Left, map2Right,
+          disparityMap,
+          disparityNorm;
+
+  cv::Mat R0, R1, P0, P1, Q;
+  cv::Rect validROI[2];
+
+  cv::StereoSGBM disparity(minDisparity, numDisparities, SADWindowSize,
+                           disparitySmoothness1, disparitySmoothness2)
 
   int frame = 0;
  
   cvNamedWindow("Left", CV_WINDOW_NORMAL);
   cvNamedWindow("Right", CV_WINDOW_NORMAL);
+  if(enableDisparity == 1) {
+    cvNamedWindow("DisparityMap", CV_WINDOW_NORMAL);
+  } 
+  
 
   while(true) {
 
@@ -110,14 +137,35 @@ int main(int argc, char const *argv[]) {
     cv::Mat imageL(imageLIpl, true);
     cv::Mat imageR(imageRIpl, true);
 
-    cv::undistort(imageL, undistortedLeft, cameraMatrices[0], distCoeffs[0]);
-    cv::undistort(imageR, undistortedRight, cameraMatrices[1], distCoeffs[1]);
+    cv::stereoRectify(cameraMatrices[0], distCoeffs[0], cameraMatrices[1], distCoeffs[1],
+                      imagesizeLeft, R, T, R0, R1, P0, P1, Q, 1, rectifyalpha, 
+                      imagesizeLeft, &validROI[0], &validROI[1]);
+
+    cv::initUndistortRectifyMap(cameraMatrices[0], distCoeffs[0], R0, P0, imagesizeLeft, CV_32FC1, map1Left, map2Left);
+    cv::initUndistortRectifyMap(cameraMatrices[1], distCoeffs[1], R1, P1, imagesizeRight, CV_32FC1, map1Right, map2Right);
+
+    cv::remap(imageL, undistortedLeft, map1Left, map2Left, cv::INTER_CUBIC);
+    cv::remap(imageR, undistortedRight, map1Right, map2Right, cv::INTER_CUBIC);
+
+    if(enableDisparity == 1) {
+      disparity(undistortedLeft, undistortedRight, disparityMap);
+      disparityMap*=(1/16.0);
+      cv::normalize(disparityMap, disparityNorm, 0, 255, cv::NORM_MINMAX, CV_8U);
+      //cv::cvtColor(disparityMap, disparityNorm, CV_BGR2GRAY);
+    }
 
     cv::imshow("Left", undistortedLeft);
     cv::imshow("Right", undistortedRight);
 
+    if(enableDisparity == 1) {
+      cv::imshow("DisparityMap", disparityNorm);
+    } 
+    
     imageL.release();
     imageR.release();
+
+    undistortedLeft.release();
+    undistortedRight.release();
   };
 
   return 0;
@@ -171,11 +219,11 @@ void initCameras() {
 
       // --- SETUP STUFF --- //
       device->GetRemoteNode("PixelFormat")->SetString("Mono8");
-      device->GetRemoteNode("HqMode")->SetString("On");
+      device->GetRemoteNode("HqMode")->SetString("Off");
       device->GetRemoteNode("BinningHorizontal")->SetInt(2);
       device->GetRemoteNode("BinningVertical")->SetInt(2);
-      device->GetRemoteNode("ExposureTime")->SetDouble(48000);
-      device->GetRemoteNode("Gain")->SetDouble(2.0);
+      device->GetRemoteNode("ExposureTime")->SetDouble(exposure);
+      device->GetRemoteNode("Gain")->SetDouble(gain);
 
       // --- CAM RESOLUTION --- //
       camWidth[cam] = device->GetRemoteNode("Width")->GetInt();
@@ -290,8 +338,9 @@ void saveImage(IplImage* ref, int cam) {
     if (pictureNumberRight <10)
       rightName +="00";
     else if(pictureNumberRight >= 10 && pictureNumberRight<100)
-        rightName+="0";
+      rightName+="0";
     cvSaveImage((rightName+std::to_string(pictureNumberRight)+".png").c_str(), ref);
+    std::cout << "Image right_0" << pictureNumberRight << ".png " << "saved!" << std::endl;
 
   } else {
     ++pictureNumberLeft;
@@ -301,8 +350,22 @@ void saveImage(IplImage* ref, int cam) {
     else if(pictureNumberLeft >= 10 && pictureNumberLeft<100)
         leftName+="0";
     cvSaveImage((leftName+std::to_string(pictureNumberLeft)+".png").c_str(), ref);
-
+    std::cout << "Image left_0" << pictureNumberLeft << ".png " << "saved!" << std::endl;
   }
+}
+
+void loadSettings(std::string name) {
+  cv::FileStorage fs(name, cv::FileStorage::READ);
+  fs["exposure"] >> exposure;
+  fs["gain"] >> gain;
+  fs["rectifyalpha"] >> rectifyalpha;
+  fs["enableDisparity"] >> enableDisparity;
+  fs["minDisparity"] >> minDisparity;
+  fs["numDisparities"] >> numDisparities;
+  fs["SADWindowSize"] >> SADWindowSize;
+  fs["disparitySmoothness1"] >> disparitySmoothness1;
+  fs["disparitySmoothness2"] >> disparitySmoothness2;
+  fs.release();
 }
 
 void loadIntrinsic(std::string name, int cam) {

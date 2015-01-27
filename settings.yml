@@ -1,0 +1,10 @@
+%YAML:1.0
+exposure: 32000.0
+gain: 0
+rectifyalpha: 0
+enableDisparity: 0
+minDisparity: 10
+numDisparities: 160
+SADWindowSize: 5
+disparitySmoothness1: 2312
+disparitySmoothness2: 9248
