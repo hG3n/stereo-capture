@@ -113,7 +113,7 @@ int main(int argc, char const *argv[]) {
   cv::Rect validROI[2];
 
   cv::StereoSGBM disparity(minDisparity, numDisparities, SADWindowSize,
-                           disparitySmoothness1, disparitySmoothness2)
+                           disparitySmoothness1, disparitySmoothness2);
 
   int frame = 0;
  
@@ -136,7 +136,7 @@ int main(int argc, char const *argv[]) {
 
     cv::Mat imageL(imageLIpl, true);
     cv::Mat imageR(imageRIpl, true);
-
+#if 1
     cv::stereoRectify(cameraMatrices[0], distCoeffs[0], cameraMatrices[1], distCoeffs[1],
                       imagesizeLeft, R, T, R0, R1, P0, P1, Q, 1, rectifyalpha, 
                       imagesizeLeft, &validROI[0], &validROI[1]);
@@ -166,7 +166,15 @@ int main(int argc, char const *argv[]) {
 
     undistortedLeft.release();
     undistortedRight.release();
-  };
+
+    disparityNorm.release();
+    disparityMap.release();
+#endif
+    //cv::imshow("Left", imageL);
+    //cv::imshow("Right", imageR);
+  }
+
+
 
   return 0;
 }
