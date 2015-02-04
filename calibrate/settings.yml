@@ -1,0 +1,10 @@
+%YAML:1.0
+calibrate: 0
+folder: "new"
+rectifyalpha: 0
+enableDisparity: 1
+minDisparity: 0
+numDisparities: 320
+SADWindowSize: 5
+disparitySmoothness1: 2312
+disparitySmoothness2: 9248
