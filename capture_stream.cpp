@@ -68,8 +68,7 @@ cv::Mat R,T,E,F;
 
 // settings
 double exposure, gain;
-int rectifyalpha;
-int enableDisparity = 0;
+int rectifyalpha, enableDisparity;
 int minDisparity, numDisparities, SADWindowSize;
 int disparitySmoothness1, disparitySmoothness2;
 
@@ -91,14 +90,8 @@ int main(int argc, char const *argv[]) {
   initCameras();
   loadIntrinsic("left.yml", 0);
   loadIntrinsic("right.yml", 1);
-  loadExtrinsic("extrinsic_metric.yml");
-
-#if 0
-  std::cout << R << std::endl;
-  std::cout << T << std::endl;
-  std::cout << E << std::endl;
-  std::cout << F << std::endl;
-#endif
+  loadExtrinsic("extrinsic.yml");
+  std::cout << "parameters loaded" << std::endl;
 
   IplImage *imageLIpl = cvCreateImage(imagesizeLeft, IPL_DEPTH_8U, 1);
   IplImage *imageRIpl = cvCreateImage(imagesizeRight, IPL_DEPTH_8U, 1);
@@ -115,6 +108,10 @@ int main(int argc, char const *argv[]) {
   cv::StereoSGBM disparity(minDisparity, numDisparities, SADWindowSize,
                            disparitySmoothness1, disparitySmoothness2);
 
+  cv::stereoRectify(cameraMatrices[0], distCoeffs[0], cameraMatrices[1], distCoeffs[1],
+                      imagesizeLeft, R, T, R0, R1, P0, P1, Q, 0, rectifyalpha, 
+                      imagesizeLeft, &validROI[0], &validROI[1]);
+
   int frame = 0;
  
   cvNamedWindow("Left", CV_WINDOW_NORMAL);
@@ -122,7 +119,6 @@ int main(int argc, char const *argv[]) {
   if(enableDisparity == 1) {
     cvNamedWindow("DisparityMap", CV_WINDOW_NORMAL);
   } 
-  
 
   while(true) {
 
@@ -137,9 +133,8 @@ int main(int argc, char const *argv[]) {
     cv::Mat imageL(imageLIpl, true);
     cv::Mat imageR(imageRIpl, true);
 #if 1
-    cv::stereoRectify(cameraMatrices[0], distCoeffs[0], cameraMatrices[1], distCoeffs[1],
-                      imagesizeLeft, R, T, R0, R1, P0, P1, Q, 1, rectifyalpha, 
-                      imagesizeLeft, &validROI[0], &validROI[1]);
+
+    std::cout << P0 << std::endl;
 
     cv::initUndistortRectifyMap(cameraMatrices[0], distCoeffs[0], R0, P0, imagesizeLeft, CV_32FC1, map1Left, map2Left);
     cv::initUndistortRectifyMap(cameraMatrices[1], distCoeffs[1], R1, P1, imagesizeRight, CV_32FC1, map1Right, map2Right);
@@ -173,8 +168,6 @@ int main(int argc, char const *argv[]) {
     //cv::imshow("Left", imageL);
     //cv::imshow("Right", imageR);
   }
-
-
 
   return 0;
 }

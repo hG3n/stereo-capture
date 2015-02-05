@@ -210,7 +210,7 @@ int main(int argc, char const *argv[]) {
   // rectification process
   stereoRectify(cameraMatrices[LEFT], distCoeffs[LEFT],
                 cameraMatrices[RIGHT], distCoeffs[RIGHT],
-                imagesize, R,T,R0,R1,P0,P1,Q,0,alpha,
+                imagesize, R,T,R0,R1,P0,P1,Q,CV_CALIB_ZERO_DISPARITY,alpha,
                 imagesize, &validROI[0], &validROI[1]);
   std::cout << "Rectification complete!" << std::endl;
 

@@ -1,10 +1,10 @@
 %YAML:1.0
-exposure: 48000.0
-gain: 0
+exposure: 32000.0
+gain: 2.0
 rectifyalpha: 0
 enableDisparity: 0
-minDisparity: 10
-numDisparities: 160
+minDisparity: 0
+numDisparities: 320
 SADWindowSize: 5
 disparitySmoothness1: 2312
 disparitySmoothness2: 9248
