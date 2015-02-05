@@ -1,7 +1,9 @@
 %YAML:1.0
-calibrate: 0
+calibrate: 1
 folder: "new"
-rectifyalpha: 0
+alpha: 0
+showRectified: 0
+drawROI: 0
 enableDisparity: 1
 minDisparity: 0
 numDisparities: 320

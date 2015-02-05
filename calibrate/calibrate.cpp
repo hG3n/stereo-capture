@@ -13,6 +13,7 @@ char key;
 int calibrate;
 std::string folder;
 int showRectified;
+int drawROI;
 int DISP;
 int alpha;
 int minDISP;
@@ -54,9 +55,10 @@ void loadSettings(std::string name) {
   fs["folder"] >> folder;
   fs["alpha"] >> alpha;
   fs["showRectified"] >> showRectified;
+  fs["drawROI"] >> drawROI;
   fs["enableDisparity"] >> DISP;
   fs["minDisparity"] >> minDISP;
-//  fs["numDisparities"] >> numDISP;
+  fs["numDisparities"] >> numDISP;
   fs["SADWindowSize"] >> SADWindowSize;
   fs["disparitySmoothness1"] >> disparitySmoothness1;
   fs["disparitySmoothness2"] >> disparitySmoothness2;
@@ -203,15 +205,12 @@ int main(int argc, char const *argv[]) {
   std::vector<cv::Mat> undistortedLeft;
   std::vector<cv::Mat> undistortedRight;
   cv::Rect validROI[2];
-  
-  std::cout << cameraMatrices[LEFT] << std::endl;
-  std::cout << cameraMatrices[RIGHT] << std::endl;
 
   // rectification process
   stereoRectify(cameraMatrices[LEFT], distCoeffs[LEFT],
                 cameraMatrices[RIGHT], distCoeffs[RIGHT],
                 imagesize, R,T,R0,R1,P0,P1,Q,CV_CALIB_ZERO_DISPARITY,alpha,
-                imagesize, &validROI[0], &validROI[1]);
+                imagesize, &validROI[LEFT], &validROI[RIGHT]);
   std::cout << "Rectification complete!" << std::endl;
 
   cv::initUndistortRectifyMap(cameraMatrices[LEFT], distCoeffs[LEFT], R0, P0, imagesize, CV_32FC1, map1L, map2L);
@@ -219,8 +218,8 @@ int main(int argc, char const *argv[]) {
 
   for(unsigned int i = 0; i < imagesLeft.size(); ++i) {
     cv::Mat undistortedL, undistortedR;
-    cv::remap(imagesLeft[i], undistortedL, map1L, map2L, cv::INTER_CUBIC);
-    cv::remap(imagesRight[i], undistortedR, map1R, map2R, cv::INTER_CUBIC);
+    cv::remap(imagesLeft[i], undistortedL, map1L, map2L, cv::INTER_LINEAR);
+    cv::remap(imagesRight[i], undistortedR, map1R, map2R, cv::INTER_LINEAR);
     undistortedLeft.push_back(undistortedL);
     undistortedRight.push_back(undistortedR);
     undistortedL.release();
@@ -229,6 +228,10 @@ int main(int argc, char const *argv[]) {
 
   if(showRectified == 1) {
     for (unsigned int i = 0; i < imagesLeft.size(); ++i) {
+      if(drawROI == 1) {
+        cv::rectangle(undistortedLeft[i], validROI[LEFT],255);
+        cv::rectangle(undistortedRight[i], validROI[RIGHT],255);
+      }
       cv::imshow("LEFT", undistortedLeft[i]);
       cv::imshow("RIGHT", undistortedRight[i]);
       key = cv::waitKey(0);
@@ -248,33 +251,36 @@ int main(int argc, char const *argv[]) {
       break;
   }
 #endif
+
   minDISP = 0;
   numDISP = 16;
-  SADWindowSize=0;
+  SADWindowSize=1;
+  bool loop = true;
 
   if(DISP == 1) {
-  
-    while(true) {
+    while(loop) {
 
-    cv::StereoSGBM disparity(minDISP,numDISP,SADWindowSize, disparitySmoothness1, disparitySmoothness2);
-    cv::Mat disparityMap, disparityNorm;
+      cv::StereoSGBM disparity(minDISP,numDISP,SADWindowSize, disparitySmoothness1, disparitySmoothness2);
+      cv::Mat disparityMap, disparityNorm;
 
-    disparity(undistortedLeft[1], undistortedRight[1], disparityMap);
-    disparityMap*=(1/16.0);
-    cv::normalize(disparityMap, disparityNorm, 0,255, cv::NORM_MINMAX, CV_8U);
-    //cv::cvtColor(disparityMap, disparityNorm, CV_BGR2GRAY);
-    cv::imshow("disparityMap", disparityNorm);
-    key = cv::waitKey(0);
-    if(key == 'n') 
-      numDISP+=16;
-    if (key = 'm')
-      minDISP+=1;
-    if (key == 's')
-      SADWindowSize+=1; 
-    if (key == 'q')
-      break;
-    std::cout << "minDISP : " << minDISP << "\t"
-              << "numDISP : " << numDISP << std::endl;
+      disparity(undistortedLeft[1], undistortedRight[1], disparityMap);
+      disparityMap*=(1/16.0);
+      cv::normalize(disparityMap, disparityNorm, 0,255, cv::NORM_MINMAX, CV_8U);
+      //cv::cvtColor(disparityMap, disparityNorm, CV_BGR2GRAY);
+      cv::imshow("disparityMap", disparityNorm);
+      key = cv::waitKey(0); //&& 0xff;
+
+      switch(char(key)) {
+        default: break;
+        case 'n': numDISP+=16; break;
+        case 'm': minDISP+=1; break;
+        case 's': SADWindowSize+=2; break;
+        case 'q': loop=false; break;
+      }
+   
+      std::cout << "minDISP : " << minDISP << "\t"
+                << "numDISP : " << numDISP << "\t"
+                << "SADSize : " << SADWindowSize << std::endl;
     }
   }
 
